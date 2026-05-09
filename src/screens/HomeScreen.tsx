@@ -40,8 +40,8 @@ export function HomeScreen({ navigation }: Props) {
       <StatusBar barStyle="light-content" backgroundColor={colors.background} />
 
       <View style={styles.header}>
-        <Text style={[styles.title, glow.cyan]}>2FKIN</Text>
-        <Text style={[styles.titleAccent, glow.gold]}>AWESOME</Text>
+        <Text style={[styles.title, glow.cyan]}>DEGEN</Text>
+        <Text style={[styles.titleAccent, glow.gold]}>POKER</Text>
         <Text style={styles.subtitle}>VIDEO POKER</Text>
       </View>
 
