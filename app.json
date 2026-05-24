@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "2FkinAwesome",
-    "slug": "2FkinAwesome",
+    "name": "Degen Poker",
+    "slug": "degen-poker",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -25,6 +25,14 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-font"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "68380eca-bf20-49e8-b801-16b81b2c5427"
+      }
     }
   }
 }

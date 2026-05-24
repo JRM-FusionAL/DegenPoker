@@ -17,9 +17,10 @@ export interface HandResult {
 }
 
 export interface GameState {
-  credits: number;
-  highScore: number;
-  bet: number;
+  credits: number;   // cents
+  highScore: number; // cents
+  bet: number;       // cents: 25–500, step 25
+  jackpot: number;   // cents: progressive jackpot
   hand: Card[];
   heldCards: boolean[];
   phase: GamePhase;

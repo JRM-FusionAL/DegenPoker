@@ -1,11 +1,15 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { colors, fonts, glow } from '../theme/colors';
+import { colors, fonts } from '../theme/colors';
 
 interface Props {
-  credits: number;
-  bet: number;
-  highScore: number;
+  credits: number;  // cents
+  bet: number;      // cents
+  highScore: number; // cents
+}
+
+function fmt(cents: number): string {
+  return `$${(cents / 100).toFixed(2)}`;
 }
 
 export function CreditDisplay({ credits, bet, highScore }: Props) {
@@ -13,15 +17,17 @@ export function CreditDisplay({ credits, bet, highScore }: Props) {
     <View style={styles.container}>
       <View style={styles.panel}>
         <Text style={styles.label}>CREDITS</Text>
-        <Text style={[styles.value, glow.green]}>{credits}</Text>
+        <Text style={styles.valueCredits}>{fmt(credits)}</Text>
       </View>
+      <View style={styles.divider} />
       <View style={styles.panel}>
         <Text style={styles.label}>BET</Text>
-        <Text style={[styles.value, { color: colors.neonGold }, glow.gold]}>{bet}</Text>
+        <Text style={styles.valueBet}>{fmt(bet)}</Text>
       </View>
+      <View style={styles.divider} />
       <View style={styles.panel}>
-        <Text style={styles.label}>HIGH</Text>
-        <Text style={[styles.value, { color: colors.neonCyan }, glow.cyan]}>{highScore}</Text>
+        <Text style={styles.label}>BEST</Text>
+        <Text style={styles.valueHigh}>{fmt(highScore)}</Text>
       </View>
     </View>
   );
@@ -30,29 +36,28 @@ export function CreditDisplay({ credits, bet, highScore }: Props) {
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    backgroundColor: '#050510',
-    borderWidth: 1,
-    borderColor: '#1a1a44',
-    borderRadius: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    marginHorizontal: 8,
-  },
-  panel: {
     alignItems: 'center',
-    minWidth: 80,
+    backgroundColor: '#080808',
+    borderWidth: 1,
+    borderColor: '#2a2a18',
+    borderRadius: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    marginHorizontal: 8,
+    marginVertical: 4,
   },
+  panel: { flex: 1, alignItems: 'center' },
+  divider: { width: 1, height: 36, backgroundColor: '#2a2a18' },
   label: {
-    fontFamily: fonts.retro,
-    fontSize: 7,
-    color: colors.textDim,
-    letterSpacing: 1,
-    marginBottom: 4,
+    fontFamily: fonts.mono, fontSize: 9, color: colors.textDim, letterSpacing: 1, marginBottom: 4,
   },
-  value: {
-    fontFamily: fonts.retro,
-    fontSize: 16,
-    color: colors.neonGreen,
+  valueCredits: {
+    fontFamily: fonts.mono, fontSize: 18, fontWeight: 'bold', color: '#e8e8e8',
+  },
+  valueBet: {
+    fontFamily: fonts.mono, fontSize: 18, fontWeight: 'bold', color: colors.gold,
+  },
+  valueHigh: {
+    fontFamily: fonts.mono, fontSize: 18, fontWeight: 'bold', color: colors.neonCyan,
   },
 });

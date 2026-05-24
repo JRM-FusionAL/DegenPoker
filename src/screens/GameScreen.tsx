@@ -1,14 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Alert,
-  Pressable,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  View,
+  Alert, Pressable, ScrollView, StatusBar, StyleSheet, Text, View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
@@ -20,7 +14,7 @@ import { BetControls } from '../components/BetControls';
 import { DealDrawButton } from '../components/DealDrawButton';
 import { WinBanner } from '../components/WinBanner';
 import { PayTable } from '../components/PayTable';
-import { colors, fonts, glow } from '../theme/colors';
+import { colors, fonts } from '../theme/colors';
 import { RootStackParamList } from '../../App';
 
 type Props = {
@@ -28,12 +22,23 @@ type Props = {
   route: RouteProp<RootStackParamList, 'Game'>;
 };
 
+const MODE_COLORS: Record<GameMode, string> = {
+  jacksOrBetter: '#3399cc',
+  jokersWild: '#9944cc',
+  deucesWild: '#cc2244',
+  bonusPoker: '#cc6600',
+  shamrocks: '#2a8a2a',
+};
+
+function fmt(cents: number): string {
+  return `$${(cents / 100).toFixed(2)}`;
+}
+
 export function GameScreen({ navigation, route }: Props) {
   const { state, currentMode, actions } = useGameState();
   const [drawnIndices, setDrawnIndices] = useState<number[]>([]);
   const [showPayTable, setShowPayTable] = useState(false);
 
-  // Set mode from route param on mount
   useEffect(() => {
     if (route.params?.mode) {
       actions.setGameMode(route.params.mode as GameMode);
@@ -45,14 +50,10 @@ export function GameScreen({ navigation, route }: Props) {
 
     if (state.phase === 'drawn') {
       if (state.credits <= 0) {
-        Alert.alert(
-          'BROKE!',
-          'You ran out of credits. Reset to 1,000?',
-          [
-            { text: 'Reset', onPress: actions.newGame },
-            { text: 'Cancel', style: 'cancel' },
-          ]
-        );
+        Alert.alert('Out of Credits', 'Reset to $100?', [
+          { text: 'Reset', onPress: actions.newGame },
+          { text: 'Cancel', style: 'cancel' },
+        ]);
       } else {
         actions.newGame();
       }
@@ -60,16 +61,13 @@ export function GameScreen({ navigation, route }: Props) {
     }
 
     if (state.phase === 'dealt') {
-      // Mark which cards will be drawn for flip animation
-      const indices = state.heldCards
-        .map((h, i) => (!h ? i : -1))
-        .filter(i => i >= 0);
+      const indices = state.heldCards.map((h, i) => (!h ? i : -1)).filter(i => i >= 0);
       setDrawnIndices(indices);
       setTimeout(() => setDrawnIndices([]), 400);
-      actions.draw();
+      await actions.draw();
     } else {
       if (state.credits < state.bet) {
-        Alert.alert('Not enough credits', `You need at least ${state.bet} credits to bet.`);
+        Alert.alert('Insufficient Credits', `You need at least ${fmt(state.bet)}.`);
         return;
       }
       actions.deal();
@@ -82,33 +80,24 @@ export function GameScreen({ navigation, route }: Props) {
   }, [actions]);
 
   const handleBetOne = useCallback(() => {
-    const next = state.bet >= 5 ? 1 : state.bet + 1;
+    const next = state.bet >= 500 ? 25 : state.bet + 25;
     actions.setBet(next);
   }, [state.bet, actions]);
 
-  const handleBetMax = useCallback(() => {
-    actions.betMax();
-  }, [actions]);
-
-  const accentColor = {
-    jacksOrBetter: colors.neonCyan,
-    jokersWild: colors.neonGold,
-    deucesWild: colors.neonPink,
-    bonusPoker: colors.neonOrange,
-    shamrocks: colors.shamrockGreen,
-  }[state.gameMode] ?? colors.neonCyan;
+  const accentColor = MODE_COLORS[state.gameMode] ?? '#3399cc';
+  const isJackpotActive = state.bet >= 200;
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={colors.background} />
 
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { borderBottomColor: accentColor + '44' }]}>
         <Pressable onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backText}>◀ MODES</Text>
+          <Text style={styles.backText}>‹ MENU</Text>
         </Pressable>
         <Text style={[styles.modeName, { color: accentColor }]}>
-          {currentMode.label.toUpperCase()}
+          {currentMode.label}
         </Text>
         <Pressable onPress={() => setShowPayTable(v => !v)} style={styles.payBtn}>
           <Text style={[styles.payBtnText, { color: accentColor }]}>
@@ -118,24 +107,28 @@ export function GameScreen({ navigation, route }: Props) {
       </View>
 
       {/* Credits */}
-      <CreditDisplay
-        credits={state.credits}
-        bet={state.bet}
-        highScore={state.highScore}
-      />
+      <CreditDisplay credits={state.credits} bet={state.bet} highScore={state.highScore} />
+
+      {/* Jackpot display */}
+      {isJackpotActive && (
+        <View style={styles.jackpotBar}>
+          <Text style={styles.jackpotText}>⚡ JACKPOT: {fmt(state.jackpot)}</Text>
+        </View>
+      )}
 
       {/* Win Banner */}
       <View style={styles.bannerArea}>
         <WinBanner result={state.phase === 'drawn' ? state.lastWin : null} />
       </View>
 
-      {/* Cards or PayTable toggle */}
+      {/* Cards or PayTable */}
       {showPayTable ? (
         <View style={styles.payTableArea}>
           <PayTable
             paytable={currentMode.paytable}
             currentBet={state.bet}
             winningTableIndex={state.lastWin?.tableIndex ?? -1}
+            jackpotValue={state.jackpot}
           />
         </View>
       ) : (
@@ -155,7 +148,7 @@ export function GameScreen({ navigation, route }: Props) {
         <BetControls
           bet={state.bet}
           onBetOne={handleBetOne}
-          onBetMax={handleBetMax}
+          onBetMax={actions.betMax}
           disabled={state.phase === 'dealt'}
         />
         <DealDrawButton
@@ -165,14 +158,20 @@ export function GameScreen({ navigation, route }: Props) {
         />
       </View>
 
-      {/* Tiny paytable strip always visible at bottom */}
+      {/* Mini paytable strip */}
       {!showPayTable && (
         <View style={styles.miniPayStrip}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {currentMode.paytable.slice(0, 5).map((entry, i) => (
+            {currentMode.paytable.slice(0, 6).map((entry, i) => (
               <View key={i} style={styles.miniEntry}>
-                <Text style={styles.miniHand}>{entry.handName}</Text>
-                <Text style={styles.miniPay}>{entry.multipliers[state.bet - 1]}</Text>
+                <Text style={styles.miniHand}>
+                  {i === 0 && isJackpotActive ? 'JACKPOT' : entry.handName}
+                </Text>
+                <Text style={[styles.miniPay, { color: accentColor }]}>
+                  {i === 0 && isJackpotActive
+                    ? fmt(state.jackpot)
+                    : fmt(entry.multipliers[0] * state.bet)}
+                </Text>
               </View>
             ))}
           </ScrollView>
@@ -183,79 +182,29 @@ export function GameScreen({ navigation, route }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
+  container: { flex: 1, backgroundColor: colors.background },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#111133',
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1,
   },
-  backBtn: {
-    paddingVertical: 4,
-    paddingRight: 8,
+  backBtn: { paddingRight: 8 },
+  backText: { fontFamily: fonts.mono, fontSize: 13, color: colors.textDim },
+  modeName: { fontFamily: fonts.mono, fontSize: 13, fontWeight: 'bold', flex: 1, textAlign: 'center' },
+  payBtn: { paddingLeft: 8 },
+  payBtnText: { fontFamily: fonts.mono, fontSize: 11, fontWeight: 'bold', letterSpacing: 1 },
+  jackpotBar: {
+    backgroundColor: '#1a1000', borderBottomWidth: 1, borderBottomColor: '#2a2000',
+    paddingVertical: 5, alignItems: 'center',
   },
-  backText: {
-    fontFamily: fonts.retro,
-    fontSize: 7,
-    color: colors.textDim,
-  },
-  modeName: {
-    fontFamily: fonts.retro,
-    fontSize: 9,
-    flex: 1,
-    textAlign: 'center',
-    letterSpacing: 1,
-  },
-  payBtn: {
-    paddingVertical: 4,
-    paddingLeft: 8,
-  },
-  payBtnText: {
-    fontFamily: fonts.retro,
-    fontSize: 7,
-    letterSpacing: 1,
-  },
-  bannerArea: {
-    minHeight: 62,
-    justifyContent: 'center',
-    marginVertical: 4,
-  },
-  cardsArea: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  payTableArea: {
-    flex: 1,
-    marginVertical: 4,
-  },
-  controls: {
-    alignItems: 'center',
-    paddingBottom: 4,
-  },
+  jackpotText: { fontFamily: fonts.mono, fontSize: 12, fontWeight: 'bold', color: colors.gold, letterSpacing: 1 },
+  bannerArea: { minHeight: 62, justifyContent: 'center', marginVertical: 4 },
+  cardsArea: { flex: 1, justifyContent: 'center' },
+  payTableArea: { flex: 1, marginVertical: 4 },
+  controls: { alignItems: 'center', paddingBottom: 4 },
   miniPayStrip: {
-    borderTopWidth: 1,
-    borderTopColor: '#111133',
-    paddingVertical: 6,
-    paddingHorizontal: 8,
+    borderTopWidth: 1, borderTopColor: '#2a2a18', paddingVertical: 8, paddingHorizontal: 8,
   },
-  miniEntry: {
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  miniHand: {
-    fontFamily: fonts.retro,
-    fontSize: 5,
-    color: colors.textDim,
-    marginBottom: 2,
-  },
-  miniPay: {
-    fontFamily: fonts.retro,
-    fontSize: 8,
-    color: colors.neonGold,
-  },
+  miniEntry: { alignItems: 'center', marginRight: 20 },
+  miniHand: { fontFamily: fonts.mono, fontSize: 8, color: colors.textDim, marginBottom: 2 },
+  miniPay: { fontFamily: fonts.mono, fontSize: 11, fontWeight: 'bold' },
 });

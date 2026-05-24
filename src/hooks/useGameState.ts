@@ -3,9 +3,9 @@ import { Card } from '../types/card';
 import { GameMode, GamePhase, GameState, HandResult } from '../types/game';
 import { createDeck, dealCards, shuffle, applyShamrocks } from '../utils/deck';
 import {
-  loadCredits, loadHighScore, loadLastMode,
-  saveCredits, saveHighScore, saveLastMode,
-  STARTING_CREDITS,
+  loadCredits, loadHighScore, loadLastMode, loadJackpot,
+  saveCredits, saveHighScore, saveLastMode, saveJackpot, contributeToJackpot,
+  STARTING_CENTS, JACKPOT_BASE,
 } from '../utils/storage';
 import * as JacksBetter from '../game/modes/jacksOrBetter';
 import * as JokersWild from '../game/modes/jokersWild';
@@ -58,9 +58,10 @@ export const GAME_MODES: GameModeDefinition[] = [
 ];
 
 const INITIAL_STATE: GameState = {
-  credits: STARTING_CREDITS,
-  highScore: STARTING_CREDITS,
-  bet: 1,
+  credits: STARTING_CENTS,
+  highScore: STARTING_CENTS,
+  bet: 25,         // $0.25
+  jackpot: JACKPOT_BASE,
   hand: [],
   heldCards: [false, false, false, false, false],
   phase: 'idle',
@@ -69,20 +70,21 @@ const INITIAL_STATE: GameState = {
 };
 
 type Action =
-  | { type: 'LOAD'; credits: number; highScore: number; gameMode: GameMode }
+  | { type: 'LOAD'; credits: number; highScore: number; jackpot: number; gameMode: GameMode }
   | { type: 'SET_BET'; bet: number }
   | { type: 'SET_MODE'; mode: GameMode }
   | { type: 'DEAL'; hand: Card[] }
   | { type: 'TOGGLE_HOLD'; index: number }
   | { type: 'HOLD_ALL_SHAMROCKS' }
-  | { type: 'DRAW'; hand: Card[]; result: HandResult; newCredits: number; newHighScore: number }
+  | { type: 'DRAW'; hand: Card[]; result: HandResult; newCredits: number; newHighScore: number; newJackpot: number }
   | { type: 'NEW_GAME' }
   | { type: 'RESET_CREDITS' };
 
 function reducer(state: GameState, action: Action): GameState {
   switch (action.type) {
     case 'LOAD':
-      return { ...state, credits: action.credits, highScore: action.highScore, gameMode: action.gameMode };
+      // gameMode excluded — async loadLastMode() races with setGameMode(route param) and overwrites it
+      return { ...state, credits: action.credits, highScore: action.highScore, jackpot: action.jackpot };
 
     case 'SET_BET':
       if (state.phase !== 'idle') return state;
@@ -110,10 +112,7 @@ function reducer(state: GameState, action: Action): GameState {
       };
 
     case 'HOLD_ALL_SHAMROCKS':
-      return {
-        ...state,
-        heldCards: state.hand.map(c => !!c.isShamrock),
-      };
+      return { ...state, heldCards: state.hand.map(c => !!c.isShamrock) };
 
     case 'DRAW':
       return {
@@ -123,13 +122,14 @@ function reducer(state: GameState, action: Action): GameState {
         lastWin: action.result,
         credits: action.newCredits,
         highScore: action.newHighScore,
+        jackpot: action.newJackpot,
       };
 
     case 'NEW_GAME':
       return { ...state, phase: 'idle', lastWin: null, hand: [], heldCards: [false, false, false, false, false] };
 
     case 'RESET_CREDITS':
-      return { ...state, credits: STARTING_CREDITS, phase: 'idle', lastWin: null, hand: [] };
+      return { ...state, credits: STARTING_CENTS, phase: 'idle', lastWin: null, hand: [] };
 
     default:
       return state;
@@ -141,12 +141,10 @@ export function useGameState() {
 
   useEffect(() => {
     (async () => {
-      const [credits, highScore, gameMode] = await Promise.all([
-        loadCredits(),
-        loadHighScore(),
-        loadLastMode(),
+      const [credits, highScore, gameMode, jackpot] = await Promise.all([
+        loadCredits(), loadHighScore(), loadLastMode(), loadJackpot(),
       ]);
-      dispatch({ type: 'LOAD', credits, highScore, gameMode });
+      dispatch({ type: 'LOAD', credits, highScore, gameMode, jackpot });
     })();
   }, []);
 
@@ -171,34 +169,56 @@ export function useGameState() {
     dispatch({ type: 'DEAL', hand: finalHand });
 
     if (state.gameMode === 'shamrocks') {
-      // Auto-hold shamrock cards after a brief delay (caller triggers animation)
       setTimeout(() => dispatch({ type: 'HOLD_ALL_SHAMROCKS' }), 600);
     }
   }, [state.phase, state.credits, state.bet, state.gameMode, currentMode.usesJoker]);
 
   const betMax = useCallback(() => {
-    dispatch({ type: 'SET_BET', bet: 5 });
+    dispatch({ type: 'SET_BET', bet: 500 });
   }, []);
 
   const toggleHold = useCallback((index: number) => {
     dispatch({ type: 'TOGGLE_HOLD', index });
   }, []);
 
-  const draw = useCallback(() => {
+  const draw = useCallback(async () => {
     if (state.phase !== 'dealt') return;
 
-    const deck = shuffle(createDeck(currentMode.usesJoker));
+    const heldCards = state.hand.filter((_, i) => state.heldCards[i]);
+    const freshDeck = shuffle(
+      createDeck(currentMode.usesJoker).filter(
+        c => !heldCards.some(h => h.suit === c.suit && h.rank === c.rank)
+      )
+    );
+    let deckIndex = 0;
     const newHand: Card[] = state.hand.map((card, i) => {
       if (state.heldCards[i]) return card;
-      const { hand } = dealCards(deck.filter(c => !state.hand.includes(c)), 1);
-      return hand[0] ?? card;
+      return freshDeck[deckIndex++] ?? card;
     });
 
-    const result = currentMode.evaluate(newHand, state.bet);
+    // Evaluate with bet=1 to get base multiplier, then scale by actual bet cents
+    const baseResult = currentMode.evaluate(newHand, 1);
+
+    let result: HandResult;
+    if (baseResult.tableIndex === 0 && state.bet >= 200) {
+      // Top hand at $2+ bet → jackpot
+      result = { name: 'JACKPOT!', tableIndex: 0, payout: state.jackpot };
+    } else {
+      result = { ...baseResult, payout: baseResult.payout * state.bet };
+    }
+
     const newCredits = state.credits + result.payout;
     const newHighScore = Math.max(state.highScore, newCredits);
 
-    dispatch({ type: 'DRAW', hand: newHand, result, newCredits, newHighScore });
+    let newJackpot: number;
+    if (baseResult.tableIndex === 0 && state.bet >= 200) {
+      newJackpot = JACKPOT_BASE;
+      await saveJackpot(JACKPOT_BASE);
+    } else {
+      newJackpot = await contributeToJackpot(state.bet);
+    }
+
+    dispatch({ type: 'DRAW', hand: newHand, result, newCredits, newHighScore, newJackpot });
 
     saveCredits(newCredits);
     if (newCredits > state.highScore) saveHighScore(newCredits);
@@ -207,7 +227,7 @@ export function useGameState() {
   const newGame = useCallback(() => {
     if (state.credits <= 0) {
       dispatch({ type: 'RESET_CREDITS' });
-      saveCredits(STARTING_CREDITS);
+      saveCredits(STARTING_CENTS);
     } else {
       dispatch({ type: 'NEW_GAME' });
     }

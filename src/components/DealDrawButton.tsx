@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
 import { GamePhase } from '../types/game';
-import { colors, fonts, glow } from '../theme/colors';
+import { colors, fonts } from '../theme/colors';
 
 interface Props {
   phase: GamePhase;
@@ -31,33 +31,37 @@ export function DealDrawButton({ phase, onPress, disabled }: Props) {
 
 const styles = StyleSheet.create({
   btn: {
-    paddingVertical: 14,
-    paddingHorizontal: 40,
-    borderRadius: 6,
+    paddingVertical: 16,
+    paddingHorizontal: 44,
+    borderRadius: 8,
     alignItems: 'center',
     borderWidth: 2,
-    marginVertical: 8,
+    marginVertical: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.6,
+    shadowRadius: 6,
+    elevation: 6,
   },
   btnDeal: {
-    backgroundColor: '#880000',
-    borderColor: colors.neonRed,
-    ...glow.red,
+    backgroundColor: '#8b0000',
+    borderColor: '#cc2222',
   },
   btnNewGame: {
-    backgroundColor: '#004400',
-    borderColor: colors.neonGreen,
-    ...glow.green,
+    backgroundColor: '#1a4a1a',
+    borderColor: '#2aaa2a',
   },
   btnPressed: {
-    opacity: 0.7,
+    opacity: 0.75,
   },
   btnDisabled: {
     opacity: 0.35,
   },
   label: {
-    fontFamily: fonts.retro,
-    fontSize: 16,
+    fontFamily: fonts.mono,
+    fontSize: 18,
+    fontWeight: 'bold',
     color: colors.textPrimary,
-    letterSpacing: 2,
+    letterSpacing: 3,
   },
 });

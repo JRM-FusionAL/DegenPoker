@@ -5,48 +5,44 @@ import { colors, fonts } from '../theme/colors';
 
 interface Props {
   paytable: PayTableType;
-  currentBet: number;
-  winningTableIndex?: number; // highlight the current winning hand
+  currentBet: number;      // cents
+  winningTableIndex?: number;
+  jackpotValue?: number;   // cents
 }
 
-export function PayTable({ paytable, currentBet, winningTableIndex = -1 }: Props) {
-  const betIdx = Math.min(currentBet, 5) - 1;
+function fmt(cents: number): string {
+  return `$${(cents / 100).toFixed(2)}`;
+}
+
+export function PayTable({ paytable, currentBet, winningTableIndex = -1, jackpotValue = 0 }: Props) {
+  const isJackpot = currentBet >= 200;
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Header */}
       <View style={styles.headerRow}>
         <Text style={[styles.cell, styles.handCell, styles.headerText]}>HAND</Text>
-        {[1,2,3,4,5].map(n => (
-          <Text
-            key={n}
-            style={[styles.cell, styles.headerText, n - 1 === betIdx && styles.betActive]}
-          >
-            {n}
-          </Text>
-        ))}
+        <Text style={[styles.cell, styles.headerText, styles.paysCell]}>PAYS</Text>
       </View>
 
       {paytable.map((entry, rowIdx) => {
         const isWinning = rowIdx === winningTableIndex;
+        const isTopHand = rowIdx === 0;
+        const payoutCents = entry.multipliers[0] * currentBet;
+
         return (
           <View key={entry.handName} style={[styles.row, isWinning && styles.rowWinning]}>
             <Text style={[styles.cell, styles.handCell, styles.handText, isWinning && styles.winningText]}>
-              {entry.handName}
+              {isTopHand && isJackpot ? 'JACKPOT!' : entry.handName}
             </Text>
-            {entry.multipliers.map((mult, colIdx) => (
-              <Text
-                key={colIdx}
-                style={[
-                  styles.cell,
-                  styles.multText,
-                  colIdx === betIdx && styles.betActive,
-                  isWinning && styles.winningText,
-                ]}
-              >
-                {mult}
-              </Text>
-            ))}
+            <Text style={[
+              styles.cell, styles.paysCell, styles.multText,
+              isWinning && styles.winningText,
+              isTopHand && isJackpot && styles.jackpotText,
+            ]}>
+              {isTopHand && isJackpot
+                ? fmt(jackpotValue)
+                : fmt(payoutCents)}
+            </Text>
           </View>
         );
       })}
@@ -57,55 +53,37 @@ export function PayTable({ paytable, currentBet, winningTableIndex = -1 }: Props
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#050510',
+    backgroundColor: '#080808',
     borderWidth: 1,
-    borderColor: '#1a1a44',
+    borderColor: '#2a2a18',
     borderRadius: 6,
     marginHorizontal: 8,
   },
   headerRow: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderBottomColor: '#222244',
-    paddingVertical: 4,
-    backgroundColor: '#0a0a1e',
+    borderBottomColor: '#2a2a18',
+    paddingVertical: 6,
+    backgroundColor: '#111108',
   },
   row: {
     flexDirection: 'row',
-    paddingVertical: 5,
+    paddingVertical: 7,
     borderBottomWidth: 1,
-    borderBottomColor: '#11113a',
+    borderBottomColor: '#1a1a10',
   },
-  rowWinning: {
-    backgroundColor: '#1a1200',
-  },
+  rowWinning: { backgroundColor: '#1a1200' },
   cell: {
-    fontFamily: fonts.retro,
-    fontSize: 7,
+    fontFamily: fonts.mono,
+    fontSize: 10,
     color: colors.textDim,
     textAlign: 'center',
-    width: 36,
   },
-  handCell: {
-    flex: 1,
-    textAlign: 'left',
-    paddingLeft: 6,
-    fontSize: 7,
-  },
-  headerText: {
-    color: colors.neonCyan,
-    letterSpacing: 0.5,
-  },
-  handText: {
-    color: '#aaaacc',
-  },
-  multText: {
-    color: '#888899',
-  },
-  betActive: {
-    color: colors.neonGold,
-  },
-  winningText: {
-    color: colors.neonGold,
-  },
+  handCell: { flex: 1, textAlign: 'left', paddingLeft: 8, fontSize: 10 },
+  paysCell: { width: 88, textAlign: 'right', paddingRight: 10 },
+  headerText: { color: colors.gold, fontWeight: 'bold' },
+  handText: { color: '#c8c0a8' },
+  multText: { color: '#887860', fontWeight: 'bold' },
+  winningText: { color: colors.gold, fontWeight: 'bold' },
+  jackpotText: { color: colors.goldBright, fontWeight: 'bold' },
 });

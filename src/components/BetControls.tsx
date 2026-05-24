@@ -1,45 +1,42 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors, fonts, glow } from '../theme/colors';
+import { colors, fonts } from '../theme/colors';
 
 interface Props {
-  bet: number;
+  bet: number;      // cents
   onBetOne: () => void;
   onBetMax: () => void;
   disabled: boolean;
 }
 
+function fmt(cents: number): string {
+  return `$${(cents / 100).toFixed(2)}`;
+}
+
 export function BetControls({ bet, onBetOne, onBetMax, disabled }: Props) {
-  const nextBet = bet >= 5 ? 1 : bet + 1;
+  const isJackpot = bet >= 200;
 
   return (
     <View style={styles.container}>
       <Pressable
-        style={[styles.btn, styles.btnBet, disabled && styles.btnDisabled]}
+        style={({ pressed }) => [styles.btn, styles.btnBet, pressed && styles.btnPressed, disabled && styles.btnDisabled]}
         onPress={onBetOne}
         disabled={disabled}
       >
-        <Text style={styles.btnLabel}>BET ONE</Text>
-        <Text style={styles.btnSub}>→ {nextBet}</Text>
+        <Text style={styles.btnLabel}>BET +$0.25</Text>
       </Pressable>
 
-      {/* Coin dots */}
-      <View style={styles.coinsRow}>
-        {[1,2,3,4,5].map(n => (
-          <View
-            key={n}
-            style={[styles.coin, n <= bet && styles.coinActive, n <= bet && glow.gold]}
-          />
-        ))}
+      <View style={styles.betDisplay}>
+        <Text style={styles.betAmt}>{fmt(bet)}</Text>
+        {isJackpot && <Text style={styles.jackpotTag}>⚡ JACKPOT</Text>}
       </View>
 
       <Pressable
-        style={[styles.btn, styles.btnMax, disabled && styles.btnDisabled]}
+        style={({ pressed }) => [styles.btn, styles.btnMax, pressed && styles.btnPressed, disabled && styles.btnDisabled]}
         onPress={onBetMax}
         disabled={disabled}
       >
-        <Text style={styles.btnLabel}>BET MAX</Text>
-        <Text style={styles.btnSub}>5 COINS</Text>
+        <Text style={styles.btnLabel}>MAX $5</Text>
       </Pressable>
     </View>
   );
@@ -50,56 +47,33 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
-    marginVertical: 6,
+    gap: 10,
+    marginVertical: 4,
   },
   btn: {
-    paddingVertical: 8,
+    paddingVertical: 10,
     paddingHorizontal: 14,
-    borderRadius: 4,
+    borderRadius: 6,
     alignItems: 'center',
     borderWidth: 1.5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.5,
+    shadowRadius: 4,
+    elevation: 4,
   },
-  btnBet: {
-    backgroundColor: colors.buttonBet,
-    borderColor: colors.buttonBetBorder,
-    ...glow.cyan,
-  },
-  btnMax: {
-    backgroundColor: '#442200',
-    borderColor: colors.neonOrange,
-    ...glow.red,
-  },
-  btnDisabled: {
-    opacity: 0.4,
-  },
+  btnBet: { backgroundColor: '#0e0e5a', borderColor: '#3355bb' },
+  btnMax: { backgroundColor: '#5a2200', borderColor: '#aa5500' },
+  btnPressed: { opacity: 0.7 },
+  btnDisabled: { opacity: 0.35 },
   btnLabel: {
-    fontFamily: fonts.retro,
-    fontSize: 8,
-    color: colors.textPrimary,
-    letterSpacing: 0.5,
+    fontFamily: fonts.mono, fontSize: 10, fontWeight: 'bold', color: colors.textPrimary,
   },
-  btnSub: {
-    fontFamily: fonts.retro,
-    fontSize: 6,
-    color: colors.textDim,
-    marginTop: 2,
+  betDisplay: { alignItems: 'center', minWidth: 96 },
+  betAmt: {
+    fontFamily: fonts.mono, fontSize: 20, fontWeight: 'bold', color: colors.gold,
   },
-  coinsRow: {
-    flexDirection: 'row',
-    gap: 5,
-    alignItems: 'center',
-  },
-  coin: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: '#222233',
-    borderWidth: 1,
-    borderColor: '#333355',
-  },
-  coinActive: {
-    backgroundColor: colors.neonGold,
-    borderColor: colors.neonGold,
+  jackpotTag: {
+    fontFamily: fonts.mono, fontSize: 9, color: colors.gold, letterSpacing: 1, marginTop: 2,
   },
 });
