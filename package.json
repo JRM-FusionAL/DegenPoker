@@ -17,13 +17,13 @@
     "expo-font": "~57.0.1",
     "expo-haptics": "~57.0.1",
     "expo-status-bar": "~57.0.1",
-    "react": "19.2.3",
+    "react": "19.2.8",
     "react-native": "0.86.2",
     "react-native-safe-area-context": "5.8.0",
     "react-native-screens": "4.26.2"
   },
   "devDependencies": {
-    "@types/react": "19.2.17",
+    "@types/react": "19.2.18",
     "typescript": "~7.0.2"
   },
   "private": true,
