@@ -76,7 +76,7 @@ export function SlotScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+      <StatusBar barStyle="light-content" />
 
       {/* Header */}
       <View style={styles.header}>
