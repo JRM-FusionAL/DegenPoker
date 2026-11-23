@@ -13,21 +13,21 @@
   "dependencies": {
     "@expo-google-fonts/press-start-2p": "^0.4.1",
     "@react-native-async-storage/async-storage": "2.2.0",
-    "@react-navigation/native": "7.5.1",
-    "@react-navigation/native-stack": "7.18.8",
-    "expo": "~58.0.22",
-    "expo-font": "~58.0.11",
-    "expo-haptics": "~58.0.7",
-    "expo-status-bar": "~58.0.4",
+    "@react-navigation/native": "^7.5.2",
+    "@react-navigation/native-stack": "^7.21.1",
+    "expo": "~58.0.26",
+    "expo-font": "~58.0.12",
+    "expo-haptics": "~58.0.8",
+    "expo-status-bar": "~58.0.5",
     "react": "19.3.0",
     "react-native": "0.88.1",
-    "react-native-safe-area-context": "~5.10.1",
+    "react-native-safe-area-context": "~5.11.1",
     "react-native-screens": "~4.30.1"
   },
   "devDependencies": {
     "@types/react": "19.3.0",
-    "typescript": "~6.0.3",
-    "semver": "^7.8.6"
+    "semver": "^7.8.6",
+    "typescript": "~6.0.3"
   },
   "private": true,
   "overrides": {
