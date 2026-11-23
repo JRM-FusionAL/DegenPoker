@@ -3,7 +3,30 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
-const glob = require('glob');
+// Expo >=58.0.26 no longer pulls in glob; keep the guard active whenever it is present.
+let glob = null;
+try { glob = require('glob'); } catch (err) { if (err.code !== 'MODULE_NOT_FOUND') throw err; }
+
+function installedDependentsOf(name) {
+  // Walk node_modules package manifests and list every package that declares `name` as a dependency.
+  const found = [];
+  const visit = dir => {
+    if (!fs.existsSync(dir)) return;
+    for (const entry of fs.readdirSync(dir)) {
+      if (entry.startsWith('.')) continue;
+      const full = path.join(dir, entry);
+      if (entry.startsWith('@')) { visit(full); continue; }
+      const manifest = path.join(full, 'package.json');
+      if (fs.existsSync(manifest)) {
+        const pkg = JSON.parse(fs.readFileSync(manifest, 'utf8'));
+        if ({ ...pkg.dependencies, ...pkg.optionalDependencies, ...pkg.peerDependencies }[name]) found.push(pkg.name);
+      }
+      visit(path.join(full, 'node_modules'));
+    }
+  };
+  visit(path.join(__dirname, '..', 'node_modules'));
+  return found;
+}
 const semver = require('semver');
 const fingerprintPaths = require('@expo/fingerprint/build/utils/Path');
 
@@ -19,12 +42,21 @@ function fixture(t) {
   return root;
 }
 
-test('patched glob and minimatch versions are actually installed', () => {
-  assert.ok(semver.gte(require('glob/package.json').version, '14.0.2'));
+test('patched minimatch version is actually installed', () => {
   assert.ok(semver.gte(require('minimatch/package.json').version, '11.0.1'));
 });
 
+test('glob is either absent from the tree or the patched version', () => {
+  if (glob) assert.ok(semver.gte(require('glob/package.json').version, '14.0.2'));
+  else assert.deepEqual(installedDependentsOf('glob'), [], 'glob is required by an installed package but not resolvable');
+});
+
 test('Expo-used sync, async and streaming glob APIs agree on native source paths', async t => {
+  if (!glob) {
+    // Expo 58.0.26+ dropped glob; nothing installed may depend on it, otherwise this API contract still matters.
+    assert.deepEqual(installedDependentsOf('glob'), []);
+    return;
+  }
   const cwd = fixture(t);
   const pattern = '**/*.@(java|kt|swift)';
   const expected = ['android/app/src/main/java/app/MainActivity.java',
