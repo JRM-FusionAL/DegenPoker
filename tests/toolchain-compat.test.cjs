@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
-const glob = require('glob');
+const tinyglobby = require('tinyglobby');
 const semver = require('semver');
 const fingerprintPaths = require('@expo/fingerprint/build/utils/Path');
 
@@ -19,22 +19,18 @@ function fixture(t) {
   return root;
 }
 
-test('patched glob and minimatch versions are actually installed', () => {
-  assert.ok(semver.gte(require('glob/package.json').version, '14.0.2'));
+test('patched minimatch is installed and Expo no longer pulls in glob', () => {
   assert.ok(semver.gte(require('minimatch/package.json').version, '11.0.1'));
+  assert.throws(() => require.resolve('glob/package.json'), { code: 'MODULE_NOT_FOUND' });
 });
 
-test('Expo-used sync, async and streaming glob APIs agree on native source paths', async t => {
+test('Expo-used tinyglobby sync and async APIs agree on native source paths', async t => {
   const cwd = fixture(t);
   const pattern = '**/*.@(java|kt|swift)';
   const expected = ['android/app/src/main/java/app/MainActivity.java',
     'android/app/src/main/java/app/MainApplication.kt', 'ios/App/AppDelegate.swift'];
-  assert.deepEqual(glob.globSync(pattern, { cwd }).sort(), expected);
-  assert.deepEqual(glob.sync(pattern, { cwd }).sort(), expected);
-  assert.deepEqual((await glob.glob(pattern, { cwd })).sort(), expected);
-  const stream = [];
-  for await (const file of glob.globStream(pattern, { cwd })) stream.push(file);
-  assert.deepEqual(stream.sort(), expected);
+  assert.deepEqual(tinyglobby.globSync(pattern, { cwd }).sort(), expected);
+  assert.deepEqual((await tinyglobby.glob(pattern, { cwd })).sort(), expected);
 });
 
 test('actual Expo Android and iOS path consumers resolve owned fixtures', t => {

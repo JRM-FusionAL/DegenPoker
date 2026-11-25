@@ -1,18 +1,21 @@
 # SDK 58 verification and security boundaries
 
-The candidate uses Expo 58.0.22's published native-module matrix: React 19.3.0,
+The candidate uses Expo 58.0.26's published native-module matrix: React 19.3.0,
 React Native 0.88.1 and the corresponding Expo font/haptics/status modules,
 screens and safe-area context. Three screens remove React Native's unsupported
 `StatusBar.backgroundColor` property; their existing container backgrounds and
 light-content bar style remain unchanged. TypeScript remains strict.
 
 SDK 57 retained vulnerable build-tool dependencies. SDK 58 removes the Zod and
-deepmerge findings but still declares old glob/minimatch dependencies. The scoped
-overrides select patched glob >=14.0.2 within major 14 and minimatch >=11.0.1
-within major 11. They are not justified by audit output alone: source review
-identified the APIs used by Expo (globSync/sync/glob/globStream, and Minimatch
-constructor/pattern/negate/match). Regression fixtures exercise those APIs and
-actual Expo Android/iOS path and fingerprint-ignore consumers. Complete Expo
+deepmerge findings. Since Expo 58.0.26 the Expo config, config-plugins, CLI and
+metro-config packages use tinyglobby instead of glob, so glob is no longer in the
+tree and its override was removed (a test asserts it stays absent). Expo's
+fingerprint package still declares an old minimatch range; the scoped override
+selects patched minimatch >=11.0.1 within major 11. It is not justified by audit
+output alone: source review identified the APIs used by Expo (Minimatch
+constructor/pattern/negate/match). Regression fixtures exercise those APIs, the
+tinyglobby globSync/glob APIs, and actual Expo Android/iOS path and
+fingerprint-ignore consumers. Complete Expo
 config evaluation, project fingerprinting and Android JS/Hermes bytecode exports
 also passed. Keep these checks when updating the overrides; prefer upstream
 constraints once Expo declares the patched versions directly.
